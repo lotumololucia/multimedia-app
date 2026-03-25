@@ -1,0 +1,11 @@
+import { createClient } from "@supabase/supabase-js";
+
+// Usamos import.meta.env para leer las variables de forma segura
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error("Faltan las variables de entorno de Supabase. Revisa tu archivo .env");
+}
+
+export const supabase = createClient(supabaseUrl, supabaseKey);

@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 218 100% 10%;
+    --foreground: 0 0% 100%;
+
+    --card: 218 100% 12%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 218 100% 12%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 0 100% 24%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 213 35% 73%;
+    --secondary-foreground: 218 100% 10%;
+
+    --muted: 218 60% 18%;
+    --muted-foreground: 213 35% 73%;
+
+    --accent: 14 92% 90%;
+    --accent-foreground: 218 100% 10%;
+
+    --destructive: 0 100% 24%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 213 35% 30%;
+    --input: 213 35% 25%;
+    --ring: 213 35% 73%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 218 100% 8%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 0 100% 24%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 218 60% 18%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 213 35% 30%;
+    --sidebar-ring: 213 35% 73%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    background-color: #001233;
+  }
+}
+
+/* Glassmorphism card utility */
+.glass-card {
+  background: rgba(0, 18, 51, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(158, 183, 212, 0.15);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #001233;
+}
+::-webkit-scrollbar-thumb {
+  background: #9eb7d4;
+  border-radius: 3px;
+}
+
+/* Activity dot animation */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
