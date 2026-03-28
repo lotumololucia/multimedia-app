@@ -92,6 +92,62 @@ export default function Planificador() {
   const [newHora, setNewHora] = useState("");
   const [newTipo, setNewTipo] = useState("Reunión General");
 
+  const [showEditEventDetails, setShowEditEventDetails] = useState(false);
+  const [editNombre, setEditNombre] = useState("");
+  const [editFecha, setEditFecha] = useState("");
+  const [editHora, setEditHora] = useState("");
+  const [editTipo, setEditTipo] = useState("");
+
+  // Función para preparar el diálogo de edición de detalles
+  function openEditDetails(evento: Evento) {
+    setSelectedEvento(evento);
+    setEditNombre(evento.nombre);
+    setEditFecha(evento.fecha_texto);
+    setEditHora(evento.hora);
+    setEditTipo(evento.tipo);
+    setShowEditDialog(false); // Cerramos el de asignaciones si estaba abierto
+    setShowEditEventDetails(true);
+  }
+
+  // Guardar cambios del evento
+  async function handleUpdateEvent() {
+    if (!selectedEvento) return;
+    const { error } = await supabase
+      .from("eventos")
+      .update({
+        nombre: editNombre,
+        fecha_texto: editFecha,
+        hora: editHora,
+        tipo: editTipo,
+      })
+      .eq("id", selectedEvento.id);
+
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Evento actualizado" });
+    setShowEditEventDetails(false);
+    fetchData();
+  }
+
+  // Eliminar evento
+  async function handleDeleteEvent() {
+    if (!selectedEvento) return;
+    const confirmar = confirm(`¿Estás segura de eliminar "${selectedEvento.nombre}"? Esto borrará también todas sus asignaciones.`);
+    
+    if (confirmar) {
+      const { error } = await supabase.from("eventos").delete().eq("id", selectedEvento.id);
+      if (error) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+        return;
+      }
+      toast({ title: "Evento eliminado", variant: "destructive" });
+      setShowEditEventDetails(false);
+      fetchData();
+    }
+  }
+
   const [eventAssignments, setEventAssignments] = useState<Record<number, number[]>>({});
 
   useEffect(() => {
@@ -433,11 +489,26 @@ export default function Planificador() {
 
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="bg-[#001233] border-[#9eb7d4]/20 text-white max-w-md max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-white">
-              {selectedEvento?.nombre}
-            </DialogTitle>
-          </DialogHeader>
+<DialogHeader className="flex flex-row items-center justify-between border-b border-[#9eb7d4]/10 pb-4 mb-4">
+  <div className="flex flex-col">
+    <DialogTitle className="text-white text-left">
+      {selectedEvento?.nombre}
+    </DialogTitle>
+    <p className="text-[10px] text-[#9eb7d4] text-left uppercase tracking-wider">Asignaciones</p>
+  </div>
+  <Button 
+    variant="ghost" 
+    size="sm" 
+    onClick={(e) => {
+      e.stopPropagation(); // Evita que se cierre el diálogo por error
+      selectedEvento && openEditDetails(selectedEvento);
+    }}
+    className="text-[#9eb7d4] hover:text-white hover:bg-[#9eb7d4]/10 h-8 px-2"
+  >
+    <Edit3 className="w-4 h-4 mr-2" />
+    Editar Datos
+  </Button>
+</DialogHeader>
           {selectedEvento && (
             <div className="space-y-4">
               <div className="flex gap-3 text-xs text-[#9eb7d4]">
@@ -506,6 +577,72 @@ export default function Planificador() {
               </Button>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+      {/* DIÁLOGO PARA EDITAR DETALLES Y ELIMINAR */}
+      <Dialog open={showEditEventDetails} onOpenChange={setShowEditEventDetails}>
+        <DialogContent className="bg-[#001233] border-[#9eb7d4]/20 text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Editar Detalles del Evento</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <Label className="text-[#9eb7d4] text-sm">Nombre</Label>
+              <Input
+                value={editNombre}
+                onChange={(e) => setEditNombre(e.target.value)}
+                className="bg-[#001233]/80 border-[#9eb7d4]/30 text-white"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-[#9eb7d4] text-sm">Fecha</Label>
+                <Input
+                  type="date"
+                  value={editFecha}
+                  onChange={(e) => setEditFecha(e.target.value)}
+                  className="bg-[#001233]/80 border-[#9eb7d4]/30 text-white"
+                />
+              </div>
+              <div>
+                <Label className="text-[#9eb7d4] text-sm">Hora</Label>
+                <Input
+                  type="time"
+                  value={editHora}
+                  onChange={(e) => setEditHora(e.target.value)}
+                  className="bg-[#001233]/80 border-[#9eb7d4]/30 text-white"
+                />
+              </div>
+            </div>
+            <div>
+              <Label className="text-[#9eb7d4] text-sm">Tipo</Label>
+              <Select value={editTipo} onValueChange={setEditTipo}>
+                <SelectTrigger className="bg-[#001233]/80 border-[#9eb7d4]/30 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-[#001233] border-[#9eb7d4]/30">
+                  <SelectItem value="Reunión General">Reunión General</SelectItem>
+                  <SelectItem value="Extra">Extra</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button
+                variant="destructive"
+                onClick={handleDeleteEvent}
+                className="flex-1 bg-red-900/40 hover:bg-red-900 text-white border border-red-500/50"
+              >
+                Eliminar
+              </Button>
+              <Button
+                onClick={handleUpdateEvent}
+                className="flex-[2] bg-[#7a0000] hover:bg-[#9a1a1a] text-white"
+              >
+                Guardar Cambios
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
