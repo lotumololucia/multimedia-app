@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 import type { Evento, Miembro, Area, Asignacion } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   Lightbulb,
   Monitor,
@@ -27,7 +27,7 @@ const areaIcons: Record<string, React.ReactNode> = {
 };
 
 export default function Dashboard() {
-  const { toast } = useToast();
+  //const { toast } = useToast();
   const [nextEvent, setNextEvent] = useState<Evento | null>(null);
   const [areas, setAreas] = useState<Area[]>([]);
   const [assignments, setAssignments] = useState<
@@ -104,9 +104,21 @@ export default function Dashboard() {
       .map((a) => getMemberName(a.miembro_id));
   }
 
-  function copyToWhatsApp() {
+function copyToWhatsApp() {
     if (!nextEvent) return;
 
+    // 1. Formatear la fecha: "Sábado 28/03"
+    const date = new Date(nextEvent.fecha_texto + "T00:00:00");
+    const formattedDate = new Intl.DateTimeFormat('es-AR', {
+      weekday: 'long',
+      day: '2-digit',
+      month: '2-digit'
+    }).format(date);
+
+    // Ponemos la primera letra en mayúscula (ej: "sábado" -> "Sábado")
+    const capitalizedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+
+    // 2. Definir el orden de las áreas
     const areaOrder = [
       "Luces",
       "Proyección",
@@ -116,31 +128,20 @@ export default function Dashboard() {
       "Cámara móvil",
     ];
 
-    let text = `🎬 *Equipo ${nextEvent.nombre}* - ${nextEvent.fecha_texto}\n⏰ ${nextEvent.hora}\n\n`;
+    // 3. Construir el string minimalista
+    let text = `${capitalizedDate}\n`;
 
     areaOrder.forEach((areaName) => {
       const assigned = getAssignedMembers(areaName);
-      const icon =
-        areaName === "Luces"
-          ? "💡"
-          : areaName === "Proyección"
-            ? "🖥️"
-            : areaName === "Transmisión"
-              ? "📡"
-              : areaName === "Fotos"
-                ? "📸"
-                : areaName === "Cámara fija"
-                  ? "🎥"
-                  : "📹";
-      text += `${icon} *${areaName}:* ${assigned.length > 0 ? assigned.join(", ") : "Sin asignar"}\n`;
+      const name = assigned.length > 0 ? assigned.join(", ") : "Sin asignar";
+      text += `- ${areaName}: ${name}\n`;
     });
 
-    text += `\n🙏 ¡Dios les bendiga! - Multimedia Somos Familia`;
-
+    // 4. Copiar al portapapeles y mostrar notificación
     navigator.clipboard.writeText(text).then(() => {
-      toast({
-        title: "¡Copiado!",
-        description: "Lista copiada al portapapeles para WhatsApp",
+      // CAMBIA ESTO:
+      toast.success("¡Copiado!", {
+        position: "bottom-center", // Opcional: para que salga abajo al medio
       });
     });
   }
@@ -170,7 +171,7 @@ export default function Dashboard() {
           Multimedia - Somos Familia
         </h1>
         <p className="text-[#9eb7d4] text-sm mt-1">
-          La Gracia de Cristo by: Lu
+           by: Lu
         </p>
       </div>
 

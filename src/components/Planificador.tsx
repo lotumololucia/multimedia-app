@@ -33,7 +33,34 @@ import {
   Video,
   VideoOff,
   ChevronRight,
+  ArrowUp,
+  ArrowDown,
+  History,
+  CalendarClock,
+  Check,
 } from "lucide-react";
+
+type SubTab = "proximos" | "pasados";
+type SortOrder = "asc" | "desc";
+
+function formatearFecha(fechaISO: string): string {
+  if (!fechaISO) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(fechaISO)) {
+    const fecha = new Date(fechaISO + "T00:00:00");
+    const dia = fecha.toLocaleDateString("es-AR", { weekday: "long" });
+    const diaCapital = dia.charAt(0).toUpperCase() + dia.slice(1);
+    const dd = String(fecha.getDate()).padStart(2, "0");
+    const mm = String(fecha.getMonth() + 1).padStart(2, "0");
+    return `${diaCapital} ${dd}/${mm}`;
+  }
+  return fechaISO.charAt(0).toUpperCase() + fechaISO.slice(1);
+}
+
+function formatearFechaInput(fechaISO: string): string {
+  if (!fechaISO) return "";
+  const [yyyy, mm, dd] = fechaISO.split("-");
+  return `${dd}/${mm}/${yyyy}`;
+}
 
 const areaIcons: Record<string, React.ReactNode> = {
   Luces: <Lightbulb className="w-4 h-4" />,
@@ -53,21 +80,19 @@ export default function Planificador() {
   const [asignaciones, setAsignaciones] = useState<Asignacion[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Dialog states
+  const [subTab, setSubTab] = useState<SubTab>("proximos");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
+
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [selectedEvento, setSelectedEvento] = useState<Evento | null>(null);
 
-  // Form states
   const [newNombre, setNewNombre] = useState("");
   const [newFecha, setNewFecha] = useState("");
   const [newHora, setNewHora] = useState("");
   const [newTipo, setNewTipo] = useState("Reunión General");
 
-  // Assignment state: area_id -> miembro_id
-  const [eventAssignments, setEventAssignments] = useState<
-    Record<number, number | null>
-  >({});
+  const [eventAssignments, setEventAssignments] = useState<Record<number, number[]>>({});
 
   useEffect(() => {
     fetchData();
@@ -78,7 +103,7 @@ export default function Planificador() {
     try {
       const [eventosRes, areasRes, miembrosRes, habilidadesRes, asignacionesRes] =
         await Promise.all([
-          supabase.from("eventos").select("*").order("fecha_texto", { ascending: true }),
+          supabase.from("eventos").select("*"),
           supabase.from("areas").select("*").order("id"),
           supabase.from("miembros").select("*").order("nombre"),
           supabase.from("habilidades").select("*"),
@@ -106,16 +131,28 @@ export default function Planificador() {
 
   function openEditDialog(evento: Evento) {
     setSelectedEvento(evento);
-    // Load existing assignments for this event
-    const existing: Record<number, number | null> = {};
+    const existing: Record<number, number[]> = {};
     areas.forEach((area) => {
-      const asign = asignaciones.find(
+      const asignsDelArea = asignaciones.filter(
         (a) => a.evento_id === evento.id && a.area_id === area.id
       );
-      existing[area.id] = asign ? asign.miembro_id : null;
+      existing[area.id] = asignsDelArea.map((a) => a.miembro_id);
     });
     setEventAssignments(existing);
     setShowEditDialog(true);
+  }
+
+  function toggleMember(areaId: number, miembroId: number) {
+    setEventAssignments((prev) => {
+      const current = prev[areaId] ?? [];
+      const yaEsta = current.includes(miembroId);
+      return {
+        ...prev,
+        [areaId]: yaEsta
+          ? current.filter((id) => id !== miembroId)
+          : [...current, miembroId],
+      };
+    });
   }
 
   async function handleCreateEvent() {
@@ -123,19 +160,16 @@ export default function Planificador() {
       toast({ title: "Error", description: "Nombre y fecha son requeridos", variant: "destructive" });
       return;
     }
-
     const { error } = await supabase.from("eventos").insert({
       nombre: newNombre,
       fecha_texto: newFecha,
       hora: newHora || "00:00",
       tipo: newTipo,
     });
-
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
       return;
     }
-
     toast({ title: "¡Evento creado!", description: newNombre });
     setShowCreateDialog(false);
     setNewNombre("");
@@ -148,25 +182,22 @@ export default function Planificador() {
   async function handleSaveAssignments() {
     if (!selectedEvento) return;
 
-    // Delete existing assignments for this event
     await supabase
       .from("asignaciones")
       .delete()
       .eq("evento_id", selectedEvento.id);
 
-    // Insert new assignments
-    const newAssignments = Object.entries(eventAssignments)
-      .filter(([, memberId]) => memberId !== null)
-      .map(([areaId, memberId]) => ({
-        evento_id: selectedEvento.id,
-        miembro_id: memberId!,
-        area_id: Number(areaId),
-      }));
+    const newAssignments = Object.entries(eventAssignments).flatMap(
+      ([areaId, memberIds]) =>
+        memberIds.map((miembroId) => ({
+          evento_id: selectedEvento.id,
+          miembro_id: miembroId,
+          area_id: Number(areaId),
+        }))
+    );
 
     if (newAssignments.length > 0) {
-      const { error } = await supabase
-        .from("asignaciones")
-        .insert(newAssignments);
+      const { error } = await supabase.from("asignaciones").insert(newAssignments);
       if (error) {
         toast({ title: "Error", description: error.message, variant: "destructive" });
         return;
@@ -179,7 +210,34 @@ export default function Planificador() {
   }
 
   const today = new Date().toISOString().split("T")[0];
-  const futureEventos = eventos.filter((e) => e.fecha_texto >= today);
+
+  const proximos = eventos
+    .filter((e) => e.fecha_texto >= today)
+    .sort((a, b) =>
+      sortOrder === "asc"
+        ? a.fecha_texto.localeCompare(b.fecha_texto)
+        : b.fecha_texto.localeCompare(a.fecha_texto)
+    );
+
+  const pasados = eventos
+    .filter((e) => e.fecha_texto < today)
+    .sort((a, b) =>
+      sortOrder === "asc"
+        ? a.fecha_texto.localeCompare(b.fecha_texto)
+        : b.fecha_texto.localeCompare(a.fecha_texto)
+    );
+
+  const eventosVisibles = subTab === "proximos" ? proximos : pasados;
+
+  function handleSubTabChange(tab: SubTab) {
+    setSubTab(tab);
+    setSortOrder("asc");
+  }
+
+  const sortLabels = {
+    proximos: { asc: "Más próximo primero", desc: "Más lejano primero" },
+    pasados: { asc: "Más antiguo primero", desc: "Más reciente primero" },
+  };
 
   if (loading) {
     return (
@@ -191,7 +249,6 @@ export default function Planificador() {
 
   return (
     <div className="p-4 max-w-2xl mx-auto space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between pt-4">
         <h1 className="text-xl font-bold text-white">Planificador</h1>
         <Button
@@ -203,14 +260,75 @@ export default function Planificador() {
         </Button>
       </div>
 
-      {/* Events List */}
-      {futureEventos.length === 0 ? (
+      <div className="flex gap-2 bg-[#001233]/60 p-1 rounded-xl border border-[#9eb7d4]/15">
+        <button
+          onClick={() => handleSubTabChange("proximos")}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+            subTab === "proximos"
+              ? "bg-[#7a0000]/80 text-white shadow"
+              : "text-[#9eb7d4] hover:text-white"
+          }`}
+        >
+          <CalendarClock className="w-4 h-4" />
+          Próximos
+          <span className={`text-xs px-1.5 py-0.5 rounded-full ${subTab === "proximos" ? "bg-white/20" : "bg-[#9eb7d4]/20"}`}>
+            {proximos.length}
+          </span>
+        </button>
+        <button
+          onClick={() => handleSubTabChange("pasados")}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+            subTab === "pasados"
+              ? "bg-[#7a0000]/80 text-white shadow"
+              : "text-[#9eb7d4] hover:text-white"
+          }`}
+        >
+          <History className="w-4 h-4" />
+          Pasados
+          <span className={`text-xs px-1.5 py-0.5 rounded-full ${subTab === "pasados" ? "bg-white/20" : "bg-[#9eb7d4]/20"}`}>
+            {pasados.length}
+          </span>
+        </button>
+      </div>
+
+      {eventosVisibles.length > 1 && (
+        <div className="flex gap-2">
+          <button
+            onClick={() => setSortOrder("asc")}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs transition-all duration-200 border ${
+              sortOrder === "asc"
+                ? "bg-[#9eb7d4]/15 border-[#9eb7d4]/50 text-white"
+                : "border-[#9eb7d4]/15 text-[#9eb7d4] hover:text-white hover:border-[#9eb7d4]/30"
+            }`}
+          >
+            <ArrowUp className="w-3 h-3" />
+            {sortLabels[subTab].asc}
+          </button>
+          <button
+            onClick={() => setSortOrder("desc")}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs transition-all duration-200 border ${
+              sortOrder === "desc"
+                ? "bg-[#9eb7d4]/15 border-[#9eb7d4]/50 text-white"
+                : "border-[#9eb7d4]/15 text-[#9eb7d4] hover:text-white hover:border-[#9eb7d4]/30"
+            }`}
+          >
+            <ArrowDown className="w-3 h-3" />
+            {sortLabels[subTab].desc}
+          </button>
+        </div>
+      )}
+
+      {eventosVisibles.length === 0 ? (
         <Card className="glass-card rounded-2xl p-6 border-[#9eb7d4]/20 text-center">
-          <p className="text-[#9eb7d4]">No hay eventos futuros programados</p>
+          <p className="text-[#9eb7d4]">
+            {subTab === "proximos"
+              ? "No hay eventos futuros programados"
+              : "No hay eventos pasados registrados"}
+          </p>
         </Card>
       ) : (
         <div className="space-y-3">
-          {futureEventos.map((evento) => (
+          {eventosVisibles.map((evento) => (
             <Card
               key={evento.id}
               className="glass-card rounded-2xl p-4 border-[#9eb7d4]/10 hover:border-[#9eb7d4]/30 transition-all cursor-pointer"
@@ -229,7 +347,7 @@ export default function Planificador() {
                   <div className="flex gap-3 mt-1 text-xs text-[#9eb7d4]">
                     <span className="flex items-center gap-1">
                       <CalendarDays className="w-3 h-3" />
-                      {evento.fecha_texto}
+                      {formatearFecha(evento.fecha_texto)}
                     </span>
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
@@ -247,7 +365,6 @@ export default function Planificador() {
         </div>
       )}
 
-      {/* Create Event Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent className="bg-[#001233] border-[#9eb7d4]/20 text-white max-w-md">
           <DialogHeader>
@@ -271,6 +388,13 @@ export default function Planificador() {
                 onChange={(e) => setNewFecha(e.target.value)}
                 className="bg-[#001233]/80 border-[#9eb7d4]/30 text-white mt-1"
               />
+              {newFecha && (
+                <p className="text-xs text-[#9eb7d4]/70 mt-1 flex items-center gap-1">
+                  <CalendarDays className="w-3 h-3" />
+                  Se mostrará como:{" "}
+                  <span className="text-[#9eb7d4]">{formatearFecha(newFecha)}</span>
+                </p>
+              )}
             </div>
             <div>
               <Label className="text-[#9eb7d4] text-sm">Hora</Label>
@@ -307,7 +431,6 @@ export default function Planificador() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit/Assign Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="bg-[#001233] border-[#9eb7d4]/20 text-white max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -320,7 +443,7 @@ export default function Planificador() {
               <div className="flex gap-3 text-xs text-[#9eb7d4]">
                 <span className="flex items-center gap-1">
                   <CalendarDays className="w-3 h-3" />
-                  {selectedEvento.fecha_texto}
+                  {formatearFecha(selectedEvento.fecha_texto)}
                 </span>
                 <span className="flex items-center gap-1">
                   <Clock className="w-3 h-3" />
@@ -328,49 +451,48 @@ export default function Planificador() {
                 </span>
               </div>
 
-              <p className="text-sm text-[#9eb7d4]">
-                Asignar miembros por área:
-              </p>
+              <p className="text-sm text-[#9eb7d4]">Asignar miembros por área:</p>
 
               {areas.map((area) => {
                 const eligible = getMembersForArea(area.id);
+                const selected = eventAssignments[area.id] ?? [];
                 return (
-                  <div key={area.id}>
+                  <div key={area.id} className="space-y-2">
                     <Label className="text-[#fcd5ce] text-sm flex items-center gap-2">
                       {areaIcons[area.nombre]}
                       {area.nombre}
+                      {selected.length > 0 && (
+                        <span className="text-[10px] bg-[#7a0000]/50 text-[#fcd5ce] px-1.5 py-0.5 rounded-full">
+                          {selected.length}
+                        </span>
+                      )}
                     </Label>
-                    <Select
-                      value={
-                        eventAssignments[area.id]
-                          ? String(eventAssignments[area.id])
-                          : "none"
-                      }
-                      onValueChange={(val) =>
-                        setEventAssignments((prev) => ({
-                          ...prev,
-                          [area.id]: val === "none" ? null : Number(val),
-                        }))
-                      }
-                    >
-                      <SelectTrigger className="bg-[#001233]/80 border-[#9eb7d4]/30 text-white mt-1">
-                        <SelectValue placeholder="Sin asignar" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-[#001233] border-[#9eb7d4]/30">
-                        <SelectItem value="none" className="text-[#9eb7d4] hover:bg-[#9eb7d4]/10">
-                          Sin asignar
-                        </SelectItem>
-                        {eligible.map((m) => (
-                          <SelectItem
-                            key={m.id}
-                            value={String(m.id)}
-                            className="text-white hover:bg-[#9eb7d4]/10"
-                          >
-                            {m.nombre}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {eligible.length === 0 ? (
+                      <p className="text-xs text-[#9eb7d4]/50 pl-1">
+                        Sin miembros habilitados
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {eligible.map((m) => {
+                          const isSelected = selected.includes(m.id);
+                          return (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => toggleMember(area.id, m.id)}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                                isSelected
+                                  ? "bg-[#7a0000]/70 border-[#7a0000] text-white"
+                                  : "bg-[#9eb7d4]/5 border-[#9eb7d4]/20 text-[#9eb7d4] hover:border-[#9eb7d4]/50 hover:text-white"
+                              }`}
+                            >
+                              {isSelected && <Check className="w-3 h-3" />}
+                              {m.nombre}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}

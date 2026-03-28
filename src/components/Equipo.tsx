@@ -14,6 +14,7 @@ import {
   Camera,
   Video,
   VideoOff,
+  CalendarDays,
 } from "lucide-react";
 
 const areaIconsMap: Record<string, React.ReactNode> = {
@@ -24,6 +25,19 @@ const areaIconsMap: Record<string, React.ReactNode> = {
   "Cámara fija": <Video className="w-4 h-4" />,
   "Cámara móvil": <VideoOff className="w-4 h-4" />,
 };
+
+function formatearFecha(fechaISO: string): string {
+  if (!fechaISO) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(fechaISO)) {
+    const fecha = new Date(fechaISO + "T00:00:00");
+    const dia = fecha.toLocaleDateString("es-AR", { weekday: "long" });
+    const diaCapital = dia.charAt(0).toUpperCase() + dia.slice(1);
+    const dd = String(fecha.getDate()).padStart(2, "0");
+    const mm = String(fecha.getMonth() + 1).padStart(2, "0");
+    return `${diaCapital} ${dd}/${mm}`;
+  }
+  return fechaISO.charAt(0).toUpperCase() + fechaISO.slice(1);
+}
 
 export default function Equipo() {
   const [miembros, setMiembros] = useState<Miembro[]>([]);
@@ -76,7 +90,6 @@ export default function Equipo() {
       .filter(Boolean);
   }
 
-  // Filter members
   const filteredMembers = miembros.filter((m) => {
     const matchesSearch = m.nombre
       .toLowerCase()
@@ -88,6 +101,33 @@ export default function Equipo() {
       : true;
     return matchesSearch && matchesArea;
   });
+
+  // Agrupa asignaciones por evento, juntando todos los miembros
+  // de esa área en un array. Map<evento_id, Miembro[]>
+  const eventosDelArea: { evento: Evento; miembros: Miembro[] }[] =
+    filterAreaId
+      ? (() => {
+          const map = new Map<number, Miembro[]>();
+          asignaciones
+            .filter((a) => a.area_id === filterAreaId)
+            .forEach((a) => {
+              const miembro = miembros.find((m) => m.id === a.miembro_id);
+              if (!miembro) return;
+              const existing = map.get(a.evento_id) ?? [];
+              map.set(a.evento_id, [...existing, miembro]);
+            });
+
+          return Array.from(map.entries())
+            .map(([eventoId, miembrosDelEvento]) => {
+              const evento = eventos.find((e) => e.id === eventoId);
+              return evento ? { evento, miembros: miembrosDelEvento } : null;
+            })
+            .filter((x): x is { evento: Evento; miembros: Miembro[] } => x !== null)
+            .sort((a, b) =>
+              b.evento.fecha_texto.localeCompare(a.evento.fecha_texto)
+            );
+        })()
+      : [];
 
   function openMemberModal(member: Miembro) {
     setSelectedMember(member);
@@ -104,15 +144,11 @@ export default function Equipo() {
 
   return (
     <div className="p-4 max-w-2xl mx-auto space-y-5">
-      {/* Header */}
       <div className="pt-4">
         <h1 className="text-xl font-bold text-white">Equipo</h1>
-        <p className="text-sm text-[#9eb7d4] mt-1">
-          {miembros.length} miembros
-        </p>
+        <p className="text-sm text-[#9eb7d4] mt-1">{miembros.length} miembros</p>
       </div>
 
-      {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9eb7d4]" />
         <Input
@@ -123,7 +159,6 @@ export default function Equipo() {
         />
       </div>
 
-      {/* Area Filter Icons */}
       <div className="flex gap-2 flex-wrap">
         <button
           onClick={() => setFilterAreaId(null)}
@@ -153,7 +188,6 @@ export default function Equipo() {
         ))}
       </div>
 
-      {/* Members List */}
       <div className="space-y-2">
         {filteredMembers.length === 0 ? (
           <Card className="glass-card rounded-2xl p-6 border-[#9eb7d4]/20 text-center">
@@ -195,7 +229,74 @@ export default function Equipo() {
         )}
       </div>
 
-      {/* Member Modal */}
+      {filterAreaId !== null && (
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="w-4 h-4 text-[#9eb7d4]" />
+            <h2 className="text-sm font-semibold text-[#9eb7d4] uppercase tracking-wider">
+              Eventos en esta área
+            </h2>
+            <span className="text-xs bg-[#9eb7d4]/10 text-[#9eb7d4] px-2 py-0.5 rounded-full">
+              {eventosDelArea.length}
+            </span>
+          </div>
+
+          {eventosDelArea.length === 0 ? (
+            <Card className="glass-card rounded-2xl p-5 border-[#9eb7d4]/20 text-center">
+              <p className="text-[#9eb7d4] text-sm">
+                No hay eventos con asignaciones para esta área
+              </p>
+            </Card>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-[#9eb7d4]/15">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-[#9eb7d4]/8 border-b border-[#9eb7d4]/15">
+                    <th className="text-left text-xs font-semibold text-[#9eb7d4] uppercase tracking-wider px-4 py-3">
+                      Evento
+                    </th>
+                    <th className="text-left text-xs font-semibold text-[#9eb7d4] uppercase tracking-wider px-4 py-3">
+                      Fecha
+                    </th>
+                    <th className="text-left text-xs font-semibold text-[#9eb7d4] uppercase tracking-wider px-4 py-3">
+                      Servidor
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Desestructuramos "miembros" (array) no "miembro" (singular) */}
+                  {eventosDelArea.map(({ evento, miembros: miembrosDelEvento }, index) => (
+                    <tr
+                      key={evento.id}
+                      className={`border-b border-[#9eb7d4]/10 transition-colors hover:bg-[#9eb7d4]/5 ${
+                        index % 2 === 0 ? "bg-transparent" : "bg-[#9eb7d4]/3"
+                      } ${
+                        index === eventosDelArea.length - 1 ? "border-b-0" : ""
+                      }`}
+                    >
+                      <td className="px-4 py-3 text-white font-medium">
+                        {evento.nombre}
+                      </td>
+                      <td className="px-4 py-3 text-[#9eb7d4] whitespace-nowrap">
+                        {formatearFecha(evento.fecha_texto)}
+                      </td>
+                      <td className="px-4 py-3">
+                        {/* .map(m => m.nombre) extrae los nombres del array
+                            de objetos Miembro, luego .join(", ") los une */}
+                        <span className="flex items-center gap-1.5 text-[#fcd5ce]">
+                          <User className="w-3 h-3 shrink-0" />
+                          {miembrosDelEvento.map((m) => m.nombre).join(", ")}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       <MemberModal
         open={showModal}
         onOpenChange={setShowModal}
