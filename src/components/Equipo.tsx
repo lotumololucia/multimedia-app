@@ -468,15 +468,16 @@ export default function Equipo() {
         </DialogContent>
       </Dialog>
 
-      <MemberModal
-        open={showModal}
-        onOpenChange={setShowModal}
-        member={selectedMember}
-        areas={areas}
-        habilidades={habilidades}
-        asignaciones={asignaciones}
-        eventos={eventos}
-      />
+<MemberModal
+  open={showModal}
+  onOpenChange={setShowModal}
+  member={selectedMember}
+  areas={areas}
+  habilidades={habilidades}
+  asignaciones={asignaciones}
+  eventos={eventos}
+  onMemberUpdated={fetchData}
+/>
     </div>
   );
 }
