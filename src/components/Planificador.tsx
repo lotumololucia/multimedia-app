@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { toast as sonnerToast } from "sonner";
 import {
   CalendarDays,
   Clock,
@@ -38,6 +39,7 @@ import {
   History,
   CalendarClock,
   Check,
+  Copy,
 } from "lucide-react";
 
 type SubTab = "proximos" | "pasados";
@@ -71,6 +73,15 @@ const areaIcons: Record<string, React.ReactNode> = {
   "Cámara móvil": <VideoOff className="w-4 h-4" />,
 };
 
+const areaOrder = [
+  "Luces",
+  "Proyección",
+  "Transmisión",
+  "Fotos",
+  "Cámara fija",
+  "Cámara móvil",
+];
+
 export default function Planificador() {
   const { toast } = useToast();
   const [eventos, setEventos] = useState<Evento[]>([]);
@@ -97,56 +108,6 @@ export default function Planificador() {
   const [editFecha, setEditFecha] = useState("");
   const [editHora, setEditHora] = useState("");
   const [editTipo, setEditTipo] = useState("");
-
-  // Función para preparar el diálogo de edición de detalles
-  function openEditDetails(evento: Evento) {
-    setSelectedEvento(evento);
-    setEditNombre(evento.nombre);
-    setEditFecha(evento.fecha_texto);
-    setEditHora(evento.hora);
-    setEditTipo(evento.tipo);
-    setShowEditDialog(false); // Cerramos el de asignaciones si estaba abierto
-    setShowEditEventDetails(true);
-  }
-
-  // Guardar cambios del evento
-  async function handleUpdateEvent() {
-    if (!selectedEvento) return;
-    const { error } = await supabase
-      .from("eventos")
-      .update({
-        nombre: editNombre,
-        fecha_texto: editFecha,
-        hora: editHora,
-        tipo: editTipo,
-      })
-      .eq("id", selectedEvento.id);
-
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-      return;
-    }
-    toast({ title: "Evento actualizado" });
-    setShowEditEventDetails(false);
-    fetchData();
-  }
-
-  // Eliminar evento
-  async function handleDeleteEvent() {
-    if (!selectedEvento) return;
-    const confirmar = confirm(`¿Estás segura de eliminar "${selectedEvento.nombre}"? Esto borrará también todas sus asignaciones.`);
-    
-    if (confirmar) {
-      const { error } = await supabase.from("eventos").delete().eq("id", selectedEvento.id);
-      if (error) {
-        toast({ title: "Error", description: error.message, variant: "destructive" });
-        return;
-      }
-      toast({ title: "Evento eliminado", variant: "destructive" });
-      setShowEditEventDetails(false);
-      fetchData();
-    }
-  }
 
   const [eventAssignments, setEventAssignments] = useState<Record<number, number[]>>({});
 
@@ -196,6 +157,57 @@ export default function Planificador() {
     });
     setEventAssignments(existing);
     setShowEditDialog(true);
+  }
+
+  function openEditDetails(evento: Evento) {
+    setSelectedEvento(evento);
+    setEditNombre(evento.nombre);
+    setEditFecha(evento.fecha_texto);
+    setEditHora(evento.hora);
+    setEditTipo(evento.tipo);
+    setShowEditDialog(false);
+    setShowEditEventDetails(true);
+  }
+
+  async function handleUpdateEvent() {
+    if (!selectedEvento) return;
+    const { error } = await supabase
+      .from("eventos")
+      .update({
+        nombre: editNombre,
+        fecha_texto: editFecha,
+        hora: editHora,
+        tipo: editTipo,
+      })
+      .eq("id", selectedEvento.id);
+
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Evento actualizado" });
+    setShowEditEventDetails(false);
+    fetchData();
+  }
+
+  async function handleDeleteEvent() {
+    if (!selectedEvento) return;
+    const confirmar = confirm(
+      `¿Estás segura de eliminar "${selectedEvento.nombre}"? Esto borrará también todas sus asignaciones.`
+    );
+    if (confirmar) {
+      const { error } = await supabase
+        .from("eventos")
+        .delete()
+        .eq("id", selectedEvento.id);
+      if (error) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+        return;
+      }
+      toast({ title: "Evento eliminado", variant: "destructive" });
+      setShowEditEventDetails(false);
+      fetchData();
+    }
   }
 
   function toggleMember(areaId: number, miembroId: number) {
@@ -263,6 +275,42 @@ export default function Planificador() {
     toast({ title: "¡Asignaciones guardadas!", description: selectedEvento.nombre });
     setShowEditDialog(false);
     fetchData();
+  }
+
+  function copyEventoToClipboard(evento: Evento, e: React.MouseEvent) {
+    e.stopPropagation();
+
+    const date = new Date(evento.fecha_texto + "T00:00:00");
+    const formattedDate = new Intl.DateTimeFormat("es-AR", {
+      weekday: "long",
+      day: "2-digit",
+      month: "2-digit",
+    }).format(date);
+    const capitalizedDate =
+      formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+
+    let text = `${capitalizedDate}\n`;
+
+    areaOrder.forEach((areaName) => {
+      const area = areas.find((a) => a.nombre === areaName);
+      if (!area) return;
+      const asignacionesDelArea = asignaciones.filter(
+        (a) => a.evento_id === evento.id && a.area_id === area.id
+      );
+      const nombres = asignacionesDelArea
+        .map((a) => {
+          const miembro = miembros.find((m) => m.id === a.miembro_id);
+          return miembro ? miembro.nombre : null;
+        })
+        .filter(Boolean) as string[];
+
+      const name = nombres.length > 0 ? nombres.join(", ") : "Sin asignar";
+      text += `- ${areaName}: ${name}\n`;
+    });
+
+    navigator.clipboard.writeText(text).then(() => {
+      sonnerToast.success("¡Copiado!", { position: "bottom-center" });
+    });
   }
 
   const today = new Date().toISOString().split("T")[0];
@@ -384,6 +432,7 @@ export default function Planificador() {
         </Card>
       ) : (
         <div className="space-y-3">
+          {/* Cada card usa "evento" del .map(), no "selectedEvento" */}
           {eventosVisibles.map((evento) => (
             <Card
               key={evento.id}
@@ -411,7 +460,7 @@ export default function Planificador() {
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <Edit3 className="w-4 h-4 text-[#9eb7d4]" />
                   <ChevronRight className="w-4 h-4 text-[#9eb7d4]" />
                 </div>
@@ -487,39 +536,53 @@ export default function Planificador() {
         </DialogContent>
       </Dialog>
 
+      {/* Dialog de asignaciones — el botón Copiar vive aquí adentro */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="bg-[#001233] border-[#9eb7d4]/20 text-white max-w-md max-h-[85vh] overflow-y-auto">
-<DialogHeader className="flex flex-row items-center justify-between border-b border-[#9eb7d4]/10 pb-4 mb-4">
-  <div className="flex flex-col">
-    <DialogTitle className="text-white text-left">
-      {selectedEvento?.nombre}
-    </DialogTitle>
-    <p className="text-[10px] text-[#9eb7d4] text-left uppercase tracking-wider">Asignaciones</p>
-  </div>
-  <Button 
-    variant="ghost" 
-    size="sm" 
-    onClick={(e) => {
-      e.stopPropagation(); // Evita que se cierre el diálogo por error
-      selectedEvento && openEditDetails(selectedEvento);
-    }}
-    className="text-[#9eb7d4] hover:text-white hover:bg-[#9eb7d4]/10 h-8 px-2"
-  >
-    <Edit3 className="w-4 h-4 mr-2" />
-    Editar Datos
-  </Button>
-</DialogHeader>
+          <DialogHeader className="flex flex-row items-center justify-between border-b border-[#9eb7d4]/10 pb-4 mb-4">
+            <div className="flex flex-col">
+              <DialogTitle className="text-white text-left">
+                {selectedEvento?.nombre}
+              </DialogTitle>
+              <p className="text-[10px] text-[#9eb7d4] text-left uppercase tracking-wider">
+                Asignaciones
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                selectedEvento && openEditDetails(selectedEvento);
+              }}
+              className="text-[#9eb7d4] hover:text-white hover:bg-[#9eb7d4]/10 h-8 px-2"
+            >
+              <Edit3 className="w-4 h-4 mr-2" />
+              Editar Datos
+            </Button>
+          </DialogHeader>
           {selectedEvento && (
             <div className="space-y-4">
-              <div className="flex gap-3 text-xs text-[#9eb7d4]">
-                <span className="flex items-center gap-1">
-                  <CalendarDays className="w-3 h-3" />
-                  {formatearFecha(selectedEvento.fecha_texto)}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  {selectedEvento.hora}
-                </span>
+              {/* Fecha/hora + botón copiar en la misma fila */}
+              <div className="flex items-center justify-between">
+                <div className="flex gap-3 text-xs text-[#9eb7d4]">
+                  <span className="flex items-center gap-1">
+                    <CalendarDays className="w-3 h-3" />
+                    {formatearFecha(selectedEvento.fecha_texto)}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {selectedEvento.hora}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => copyEventoToClipboard(selectedEvento, e)}
+                  className="flex items-center gap-1.5 text-xs text-[#9eb7d4] hover:text-white transition-colors px-2 py-1 rounded-lg border border-[#9eb7d4]/20 hover:border-[#9eb7d4]/50"
+                >
+                  <Copy className="w-3 h-3" />
+                  Copiar lista
+                </button>
               </div>
 
               <p className="text-sm text-[#9eb7d4]">Asignar miembros por área:</p>
@@ -579,7 +642,7 @@ export default function Planificador() {
           )}
         </DialogContent>
       </Dialog>
-      {/* DIÁLOGO PARA EDITAR DETALLES Y ELIMINAR */}
+
       <Dialog open={showEditEventDetails} onOpenChange={setShowEditEventDetails}>
         <DialogContent className="bg-[#001233] border-[#9eb7d4]/20 text-white max-w-md">
           <DialogHeader>
@@ -626,7 +689,6 @@ export default function Planificador() {
                 </SelectContent>
               </Select>
             </div>
-
             <div className="flex gap-3 pt-4">
               <Button
                 variant="destructive"

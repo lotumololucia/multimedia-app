@@ -3,6 +3,15 @@ import { supabase } from "@/lib/supabase";
 import type { Miembro, Area, Habilidad, Asignacion, Evento } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 import MemberModal from "@/components/MemberModal";
 import {
   Search,
@@ -15,6 +24,8 @@ import {
   Video,
   VideoOff,
   CalendarDays,
+  Plus,
+  Check,
 } from "lucide-react";
 
 const areaIconsMap: Record<string, React.ReactNode> = {
@@ -40,6 +51,7 @@ function formatearFecha(fechaISO: string): string {
 }
 
 export default function Equipo() {
+  const { toast } = useToast();
   const [miembros, setMiembros] = useState<Miembro[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
   const [habilidades, setHabilidades] = useState<Habilidad[]>([]);
@@ -51,6 +63,14 @@ export default function Equipo() {
   const [filterAreaId, setFilterAreaId] = useState<number | null>(null);
   const [selectedMember, setSelectedMember] = useState<Miembro | null>(null);
   const [showModal, setShowModal] = useState(false);
+
+  // ── Estado del dialog de nuevo miembro ─────────────────────
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [newNombre, setNewNombre] = useState("");
+  // newAreaIds: array de area_id seleccionados para el nuevo miembro.
+  // Mismo patrón que eventAssignments en Planificador: toggleArea
+  // agrega o quita un id del array.
+  const [newAreaIds, setNewAreaIds] = useState<number[]>([]);
 
   useEffect(() => {
     fetchData();
@@ -102,8 +122,6 @@ export default function Equipo() {
     return matchesSearch && matchesArea;
   });
 
-  // Agrupa asignaciones por evento, juntando todos los miembros
-  // de esa área en un array. Map<evento_id, Miembro[]>
   const eventosDelArea: { evento: Evento; miembros: Miembro[] }[] =
     filterAreaId
       ? (() => {
@@ -129,6 +147,81 @@ export default function Equipo() {
         })()
       : [];
 
+  function toggleArea(areaId: number) {
+    setNewAreaIds((prev) =>
+      prev.includes(areaId)
+        ? prev.filter((id) => id !== areaId)
+        : [...prev, areaId]
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // handleCreateMember: inserción en dos pasos.
+  //
+  // Paso 1: insertar en `miembros` con select("id") para obtener
+  //   el id autogenerado por Supabase. Sin este id no podemos
+  //   crear las filas de habilidades.
+  //
+  // Paso 2: insertar una fila en `habilidades` por cada área
+  //   seleccionada, usando el id recién obtenido.
+  //
+  // Si no se seleccionó ningún área, igual se crea el miembro
+  // (puede tener habilidades vacías por ahora).
+  // ─────────────────────────────────────────────────────────────
+  async function handleCreateMember() {
+    if (!newNombre.trim()) {
+      toast({
+        title: "Error",
+        description: "El nombre es requerido",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Paso 1: crear el miembro y obtener su id
+    const { data: miembroData, error: miembroError } = await supabase
+      .from("miembros")
+      .insert({ nombre: newNombre.trim() })
+      .select("id")
+      .single();
+
+    if (miembroError || !miembroData) {
+      toast({
+        title: "Error",
+        description: miembroError?.message ?? "No se pudo crear el miembro",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Paso 2: crear las habilidades si hay áreas seleccionadas
+    if (newAreaIds.length > 0) {
+      const habilidadesNuevas = newAreaIds.map((areaId) => ({
+        miembro_id: miembroData.id,
+        area_id: areaId,
+      }));
+
+      const { error: habilidadesError } = await supabase
+        .from("habilidades")
+        .insert(habilidadesNuevas);
+
+      if (habilidadesError) {
+        toast({
+          title: "Error al guardar áreas",
+          description: habilidadesError.message,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    toast({ title: "¡Miembro agregado!", description: newNombre.trim() });
+    setShowCreateDialog(false);
+    setNewNombre("");
+    setNewAreaIds([]);
+    fetchData();
+  }
+
   function openMemberModal(member: Miembro) {
     setSelectedMember(member);
     setShowModal(true);
@@ -144,9 +237,19 @@ export default function Equipo() {
 
   return (
     <div className="p-4 max-w-2xl mx-auto space-y-5">
-      <div className="pt-4">
-        <h1 className="text-xl font-bold text-white">Equipo</h1>
-        <p className="text-sm text-[#9eb7d4] mt-1">{miembros.length} miembros</p>
+      {/* Header con botón Nuevo Miembro */}
+      <div className="flex items-center justify-between pt-4">
+        <div>
+          <h1 className="text-xl font-bold text-white">Equipo</h1>
+          <p className="text-sm text-[#9eb7d4] mt-0.5">{miembros.length} miembros</p>
+        </div>
+        <Button
+          onClick={() => setShowCreateDialog(true)}
+          className="bg-[#7a0000] hover:bg-[#9a1a1a] text-white rounded-xl h-10 px-4 text-sm"
+        >
+          <Plus className="w-4 h-4 mr-1" />
+          Nuevo Miembro
+        </Button>
       </div>
 
       <div className="relative">
@@ -264,15 +367,12 @@ export default function Equipo() {
                   </tr>
                 </thead>
                 <tbody>
-                  {/* Desestructuramos "miembros" (array) no "miembro" (singular) */}
                   {eventosDelArea.map(({ evento, miembros: miembrosDelEvento }, index) => (
                     <tr
                       key={evento.id}
                       className={`border-b border-[#9eb7d4]/10 transition-colors hover:bg-[#9eb7d4]/5 ${
                         index % 2 === 0 ? "bg-transparent" : "bg-[#9eb7d4]/3"
-                      } ${
-                        index === eventosDelArea.length - 1 ? "border-b-0" : ""
-                      }`}
+                      } ${index === eventosDelArea.length - 1 ? "border-b-0" : ""}`}
                     >
                       <td className="px-4 py-3 text-white font-medium">
                         {evento.nombre}
@@ -281,8 +381,6 @@ export default function Equipo() {
                         {formatearFecha(evento.fecha_texto)}
                       </td>
                       <td className="px-4 py-3">
-                        {/* .map(m => m.nombre) extrae los nombres del array
-                            de objetos Miembro, luego .join(", ") los une */}
                         <span className="flex items-center gap-1.5 text-[#fcd5ce]">
                           <User className="w-3 h-3 shrink-0" />
                           {miembrosDelEvento.map((m) => m.nombre).join(", ")}
@@ -296,6 +394,79 @@ export default function Equipo() {
           )}
         </div>
       )}
+
+      {/* ── Dialog: Nuevo Miembro ────────────────────────────────
+          Paso 1: nombre (Input de texto simple)
+          Paso 2: áreas (checkboxes custom, mismo patrón que
+          los botones de miembros en Planificador)
+
+          Al confirmar se llama handleCreateMember() que:
+          1. Inserta en `miembros` y obtiene el id generado
+          2. Inserta una fila en `habilidades` por cada área
+      ──────────────────────────────────────────────────────────── */}
+      <Dialog open={showCreateDialog} onOpenChange={(open) => {
+        setShowCreateDialog(open);
+        if (!open) {
+          setNewNombre("");
+          setNewAreaIds([]);
+        }
+      }}>
+        <DialogContent className="bg-[#001233] border-[#9eb7d4]/20 text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Nuevo Miembro</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5 pt-1">
+            <div>
+              <Label className="text-[#9eb7d4] text-sm">Nombre</Label>
+              <Input
+                value={newNombre}
+                onChange={(e) => setNewNombre(e.target.value)}
+                placeholder="Nombre completo"
+                className="bg-[#001233]/80 border-[#9eb7d4]/30 text-white mt-1"
+              />
+            </div>
+
+            <div>
+              <Label className="text-[#9eb7d4] text-sm mb-2 block">
+                Áreas en las que puede servir
+              </Label>
+              <div className="flex flex-wrap gap-2">
+                {areas.map((area) => {
+                  const isSelected = newAreaIds.includes(area.id);
+                  return (
+                    <button
+                      key={area.id}
+                      type="button"
+                      onClick={() => toggleArea(area.id)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                        isSelected
+                          ? "bg-[#7a0000]/70 border-[#7a0000] text-white"
+                          : "bg-[#9eb7d4]/5 border-[#9eb7d4]/20 text-[#9eb7d4] hover:border-[#9eb7d4]/50 hover:text-white"
+                      }`}
+                    >
+                      {isSelected && <Check className="w-3 h-3" />}
+                      {areaIconsMap[area.nombre]}
+                      {area.nombre}
+                    </button>
+                  );
+                })}
+              </div>
+              {newAreaIds.length === 0 && (
+                <p className="text-xs text-[#9eb7d4]/50 mt-2">
+                  Podés agregar áreas más tarde
+                </p>
+              )}
+            </div>
+
+            <Button
+              onClick={handleCreateMember}
+              className="w-full bg-[#7a0000] hover:bg-[#9a1a1a] text-white rounded-xl"
+            >
+              Agregar Miembro
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <MemberModal
         open={showModal}
