@@ -227,12 +227,19 @@ export default function Dashboard() {
   return (
     <div className="p-4 max-w-2xl mx-auto space-y-6">
       {/* Título */}
-      <div className="text-center pt-4">
-        <h1 className="text-xl font-bold text-white leading-tight">
-          Multimedia - Somos Familia
-        </h1>
-        <p className="text-[#9eb7d4] text-sm mt-1">by: Lu</p>
-      </div>
+<div className="flex items-center justify-center gap-4 pt-4">
+  <div className="text-center">
+    <h1 className="text-xl font-bold text-white tracking-widest">
+      MULTIMEDIA
+    </h1>
+    <p className="text-[#9eb7d4] text-xs">by: Lu</p>
+  </div>
+  <img
+    src="/MULTIMEDIA.png"
+    alt="Logo Somos Familia"
+    className="w-24 h-24 object-contain"
+  />
+</div>
 
       {/* Sub-tabs */}
       <div className="flex gap-2 bg-[#001233]/60 p-1 rounded-xl border border-[#9eb7d4]/15">
