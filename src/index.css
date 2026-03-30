@@ -58,10 +58,10 @@
 
 /* Glassmorphism card utility */
 .glass-card {
-  background: rgba(0, 18, 51, 0.6);
+  background: rgba(0, 28, 71, 0.85);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(158, 183, 212, 0.15);
+  border: 1px solid rgba(158, 183, 212, 0.25);
 }
 
 /* Custom scrollbar */
