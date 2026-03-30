@@ -301,10 +301,11 @@ export default function Dashboard() {
             {areaOrder.map((areaName) => {
               const assigned = getAssignedMembers(areaName);
               return (
-                <Card
-                  key={areaName}
-                  className="glass-card rounded-2xl p-4 border-[#9eb7d4]/10 hover:border-[#9eb7d4]/30 transition-all"
-                >
+<Card
+  key={areaName}
+  className="rounded-2xl p-4 border border-[#9eb7d4]/25 hover:border-[#9eb7d4]/50 transition-all"
+  style={{ backgroundColor: "rgba(0, 28, 71, 0.85)" }}
+>
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-8 h-8 rounded-lg bg-[#7a0000]/60 flex items-center justify-center text-[#fcd5ce]">
                       {areaIconsLg[areaName]}
