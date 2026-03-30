@@ -317,9 +317,9 @@ export default function Dashboard() {
                   <div className="space-y-1">
                     {assigned.length > 0 ? (
                       assigned.map((name, i) => (
-                        <p key={i} className="text-xs text-[#9eb7d4]">
-                          {name}
-                        </p>
+                      <p key={i} className="text-sm text-[#9eb7d4] font-medium">
+                        {name}
+                      </p>  
                       ))
                     ) : (
                       <p className="text-xs text-[#9eb7d4]/50 italic">
