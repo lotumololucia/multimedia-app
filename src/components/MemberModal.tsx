@@ -23,11 +23,6 @@ import {
   Edit3,
   Check,
 } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 const areaIcons: Record<string, React.ReactNode> = {
   Luces: <Lightbulb className="w-3 h-3" />,
@@ -38,6 +33,32 @@ const areaIcons: Record<string, React.ReactNode> = {
   "Cámara móvil": <VideoOff className="w-3 h-3" />,
 };
 
+const monthNames: Record<string, string> = {
+  "01": "Enero",
+  "02": "Febrero",
+  "03": "Marzo",
+  "04": "Abril",
+  "05": "Mayo",
+  "06": "Junio",
+  "07": "Julio",
+  "08": "Agosto",
+  "09": "Septiembre",
+  "10": "Octubre",
+  "11": "Noviembre",
+  "12": "Diciembre",
+};
+
+function formatDateShort(fechaISO: string): string {
+  if (!fechaISO) return "";
+  const fecha = new Date(fechaISO + "T00:00:00");
+  const dia = fecha.toLocaleDateString("es-AR", { weekday: "short" });
+  // Capitalizar y quitar punto si viene (ej: "sáb." → "Sáb")
+  const diaCapital =
+    dia.charAt(0).toUpperCase() + dia.slice(1).replace(".", "");
+  const dd = String(fecha.getDate()).padStart(2, "0");
+  return `${diaCapital} ${dd}`;
+}
+
 interface MemberModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -46,7 +67,7 @@ interface MemberModalProps {
   habilidades: Habilidad[];
   asignaciones: Asignacion[];
   eventos: { id: number; fecha_texto: string; nombre: string }[];
-  onMemberUpdated: () => void; // callback para refrescar Equipo
+  onMemberUpdated: () => void;
 }
 
 export default function MemberModal({
@@ -61,15 +82,13 @@ export default function MemberModal({
 }: MemberModalProps) {
   const { toast } = useToast();
 
-  // ── Estado del dialog de edición ───────────────────────────
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editNombre, setEditNombre] = useState("");
-  // editAreaIds: áreas actualmente seleccionadas para el miembro.
-  // Se inicializa con las habilidades existentes al abrir el dialog.
   const [editAreaIds, setEditAreaIds] = useState<number[]>([]);
 
   if (!member) return null;
 
+  // ── Habilidades ────────────────────────────────────────────
   const memberSkills = habilidades
     .filter((h) => h.miembro_id === member.id)
     .map((h) => {
@@ -78,47 +97,50 @@ export default function MemberModal({
     })
     .filter(Boolean);
 
+  // ── Eventos en los que el miembro fue asignado ─────────────
   const memberAssignments = asignaciones.filter(
     (a) => a.miembro_id === member.id
   );
+  const servedEventIds = new Set<number>(
+    memberAssignments.map((a) => a.evento_id)
+  );
 
-  const oneMonthAgo = new Date();
-  oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-  const oneMonthAgoStr = oneMonthAgo.toISOString().split("T")[0];
-
-  const recentServices = memberAssignments.filter((a) => {
-    const evento = eventos.find((e) => e.id === a.evento_id);
-    return evento && evento.fecha_texto >= oneMonthAgoStr;
-  });
-
+  // ── Servicios en 2026 (eventos únicos) ────────────────────
   const currentYear = new Date().getFullYear();
-  const serviceDates = new Set<string>();
+  const servicesThisYear = new Set<number>();
   memberAssignments.forEach((a) => {
     const evento = eventos.find((e) => e.id === a.evento_id);
     if (evento && evento.fecha_texto.startsWith(String(currentYear))) {
-      serviceDates.add(evento.fecha_texto);
+      servicesThisYear.add(a.evento_id);
     }
   });
 
-  const months = [
-    "Ene", "Feb", "Mar", "Abr", "May", "Jun",
-    "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
-  ];
+  // ── Agrupar todos los eventos por mes ─────────────────────
+  // Ordenamos eventos por fecha ascendente
+  const sortedEventos = [...eventos].sort((a, b) =>
+    a.fecha_texto.localeCompare(b.fecha_texto)
+  );
 
-  function getDaysInMonth(month: number, year: number) {
-    return new Date(year, month + 1, 0).getDate();
-  }
+  // Map: "YYYY-MM" → eventos[]
+  const eventosByMonth = sortedEventos.reduce(
+    (acc, evento) => {
+      const [year, month] = evento.fecha_texto.split("-");
+      const key = `${year}-${month}`;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(evento);
+      return acc;
+    },
+    {} as Record<string, typeof eventos>
+  );
 
-  // ─────────────────────────────────────────────────────────────
-  // openEditDialog: carga el estado de edición con los datos
-  // actuales del miembro antes de abrir el dialog.
-  // Las áreas actuales se obtienen filtrando habilidades por
-  // miembro_id y extrayendo los area_id.
-  // ─────────────────────────────────────────────────────────────
+  // Meses ordenados (solo los que tienen eventos)
+  const sortedMonthKeys = Object.keys(eventosByMonth).sort();
+
+  // ── Handlers de edición ───────────────────────────────────
   function openEditDialog() {
-    setEditNombre(member.nombre);
+    setEditNombre(member!.nombre);
     const currentAreaIds = habilidades
-      .filter((h) => h.miembro_id === member.id)
+      .filter((h) => h.miembro_id === member!.id)
       .map((h) => h.area_id);
     setEditAreaIds(currentAreaIds);
     setShowEditDialog(true);
@@ -132,90 +154,88 @@ export default function MemberModal({
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // handleUpdateMember: actualización en dos pasos.
-  //
-  // Paso 1: actualizar el nombre en `miembros`.
-  //
-  // Paso 2: sincronizar habilidades.
-  //   - Borramos TODAS las habilidades del miembro (delete where miembro_id)
-  //   - Insertamos las nuevas según editAreaIds
-  //   Este patrón "borrar todo y reinsertar" es el mismo que usamos
-  //   para asignaciones en Planificador: simple y sin riesgo de
-  //   duplicados o inconsistencias.
-  // ─────────────────────────────────────────────────────────────
   async function handleUpdateMember() {
     if (!editNombre.trim()) {
-      toast({ title: "Error", description: "El nombre es requerido", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "El nombre es requerido",
+        variant: "destructive",
+      });
       return;
     }
 
-    // Paso 1: actualizar nombre
     const { error: updateError } = await supabase
       .from("miembros")
       .update({ nombre: editNombre.trim() })
-      .eq("id", member.id);
+      .eq("id", member!.id);
 
     if (updateError) {
-      toast({ title: "Error", description: updateError.message, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: updateError.message,
+        variant: "destructive",
+      });
       return;
     }
 
-    // Paso 2a: borrar habilidades existentes
+    // Borrar y reinsertar habilidades
     await supabase
       .from("habilidades")
       .delete()
-      .eq("miembro_id", member.id);
+      .eq("miembro_id", member!.id);
 
-    // Paso 2b: insertar las nuevas habilidades
     if (editAreaIds.length > 0) {
       const { error: habilidadesError } = await supabase
         .from("habilidades")
         .insert(
           editAreaIds.map((areaId) => ({
-            miembro_id: member.id,
+            miembro_id: member!.id,
             area_id: areaId,
           }))
         );
 
       if (habilidadesError) {
-        toast({ title: "Error al guardar áreas", description: habilidadesError.message, variant: "destructive" });
+        toast({
+          title: "Error al guardar áreas",
+          description: habilidadesError.message,
+          variant: "destructive",
+        });
         return;
       }
     }
 
     toast({ title: "Miembro actualizado", description: editNombre.trim() });
     setShowEditDialog(false);
-    onOpenChange(false); // cerramos el modal principal
-    onMemberUpdated();   // le avisamos a Equipo que recargue datos
+    onOpenChange(false);
+    onMemberUpdated();
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // handleDeleteMember: elimina el miembro y sus habilidades.
-  // Las asignaciones quedan huérfanas en la BD (sin miembro_id
-  // válido), pero no rompen nada funcionalmente porque el código
-  // usa .find() que devuelve undefined en ese caso.
-  // Si querés limpieza total, podés agregar un delete de
-  // asignaciones where miembro_id antes de borrar el miembro.
-  // ─────────────────────────────────────────────────────────────
   async function handleDeleteMember() {
     const confirmar = confirm(
-      `¿Estás segura de eliminar a "${member.nombre}"? Esta acción no se puede deshacer.`
+      `¿Estás segura de eliminar a "${member!.nombre}"? Esta acción no se puede deshacer.`
     );
     if (!confirmar) return;
 
-    // Borrar habilidades primero (integridad referencial)
-    await supabase.from("habilidades").delete().eq("miembro_id", member.id);
-    // Borrar asignaciones del miembro
-    await supabase.from("asignaciones").delete().eq("miembro_id", member.id);
+    await supabase
+      .from("habilidades")
+      .delete()
+      .eq("miembro_id", member!.id);
+    await supabase
+      .from("asignaciones")
+      .delete()
+      .eq("miembro_id", member!.id);
 
     const { error } = await supabase
       .from("miembros")
       .delete()
-      .eq("id", member.id);
+      .eq("id", member!.id);
 
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
       return;
     }
 
@@ -227,7 +247,7 @@ export default function MemberModal({
 
   return (
     <>
-      {/* ── Modal principal: vista del miembro ───────────────── */}
+      {/* ── Modal principal ───────────────────────────────── */}
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="bg-[#001233] border-[#9eb7d4]/20 text-white max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -244,7 +264,6 @@ export default function MemberModal({
                     </p>
                   </div>
                 </div>
-                {/* Botón editar — mismo patrón que en Planificador */}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -259,6 +278,7 @@ export default function MemberModal({
           </DialogHeader>
 
           <div className="space-y-5">
+            {/* Habilidades */}
             <div>
               <p className="text-sm text-[#9eb7d4] mb-2">Habilidades</p>
               <div className="flex flex-wrap gap-2">
@@ -280,57 +300,82 @@ export default function MemberModal({
               </div>
             </div>
 
+            {/* Servicios en el año actual */}
             <div className="glass-card rounded-xl p-4 border-[#9eb7d4]/10">
-              <p className="text-sm text-[#9eb7d4]">Servicios (último mes)</p>
+              <p className="text-sm text-[#9eb7d4]">
+                Servicios en {currentYear}
+              </p>
               <p className="text-3xl font-bold text-white mt-1">
-                {recentServices.length}
+                {servicesThisYear.size}
               </p>
             </div>
 
+            {/* Lista de actividad por mes */}
             <div>
               <p className="text-sm text-[#9eb7d4] mb-3">
-                Mapa de Actividad {currentYear}
+                Actividad {currentYear}
               </p>
-              <div className="space-y-2">
-                {months.map((monthName, monthIndex) => {
-                  const daysInMonth = getDaysInMonth(monthIndex, currentYear);
-                  return (
-                    <div key={monthName} className="flex items-center gap-2">
-                      <span className="text-[10px] text-[#9eb7d4] w-8 text-right">
-                        {monthName}
-                      </span>
-                      <div className="flex gap-[2px] flex-wrap">
-                        {Array.from({ length: daysInMonth }, (_, dayIndex) => {
-                          const day = dayIndex + 1;
-                          const dateStr = `${currentYear}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                          const isActive = serviceDates.has(dateStr);
-                          return (
-                            <Tooltip key={dateStr}>
-                              <TooltipTrigger asChild>
-                                <div
-                                  className={`w-[10px] h-[10px] rounded-sm ${
-                                    isActive ? "bg-[#7a0000]" : "bg-[#9eb7d4]/10"
+
+              {sortedMonthKeys.length === 0 ? (
+                <p className="text-xs text-[#9eb7d4]/50 italic">
+                  No hay eventos registrados
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {sortedMonthKeys.map((monthKey) => {
+                    const [, month] = monthKey.split("-");
+                    const monthLabel = monthNames[month] ?? monthKey;
+                    const monthEventos = eventosByMonth[monthKey];
+
+                    return (
+                      <div key={monthKey}>
+                        {/* Encabezado de mes */}
+                        <p className="text-xs font-semibold text-[#9eb7d4] uppercase tracking-wider mb-2">
+                          {monthLabel}
+                        </p>
+
+                        {/* Lista de eventos del mes */}
+                        <div className="space-y-1 pl-1">
+                          {monthEventos.map((evento) => {
+                            const served = servedEventIds.has(evento.id);
+                            return (
+                              <div
+                                key={evento.id}
+                                className="flex items-center gap-2"
+                              >
+                                {served ? (
+                                  /* Check rojo si sirvió */
+                                  <div className="w-4 h-4 rounded-full bg-[#7a0000] flex items-center justify-center flex-shrink-0">
+                                    <Check className="w-2.5 h-2.5 text-white" />
+                                  </div>
+                                ) : (
+                                  /* Círculo vacío si no sirvió */
+                                  <div className="w-4 h-4 rounded-full border border-[#9eb7d4]/25 flex-shrink-0" />
+                                )}
+                                <span
+                                  className={`text-xs ${
+                                    served
+                                      ? "text-white font-medium"
+                                      : "text-[#9eb7d4]/50"
                                   }`}
-                                />
-                              </TooltipTrigger>
-                              <TooltipContent className="bg-[#001233] border-[#9eb7d4]/30 text-white text-xs">
-                                {dateStr}
-                                {isActive ? " ✓ Sirvió" : ""}
-                              </TooltipContent>
-                            </Tooltip>
-                          );
-                        })}
+                                >
+                                  {formatDateShort(evento.fecha_texto)}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* ── Dialog de edición ────────────────────────────────── */}
+      {/* ── Dialog de edición ─────────────────────────────── */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="bg-[#001233] border-[#9eb7d4]/20 text-white max-w-md">
           <DialogHeader>
