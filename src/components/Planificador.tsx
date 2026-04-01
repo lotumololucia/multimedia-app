@@ -93,7 +93,7 @@ export default function Planificador() {
   const [asignaciones, setAsignaciones] = useState<Asignacion[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [subTab, setSubTab] = useState<SubTab>("proximos");
+  const [subTab, setSubTab] = useState<SubTab>("calendario");
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -379,6 +379,19 @@ const pasados = eventos
       </div>
 
 <div className="flex gap-2">
+  <div className="bg-[#001233]/60 p-1 rounded-xl border border-[#9eb7d4]/15">
+    <button
+      onClick={() => handleSubTabChange("calendario")}
+      className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-medium transition-all duration-200 h-full ${
+        subTab === "calendario"
+          ? "bg-[#7a0000]/80 text-white shadow"
+          : "text-[#9eb7d4] hover:text-white"
+      }`}
+    >
+      <Calendar className="w-3.5 h-3.5" />
+      Calendario
+    </button>
+  </div>
   <div className="flex flex-1 bg-[#001233]/60 p-1 rounded-xl border border-[#9eb7d4]/15">
     <button
       onClick={() => handleSubTabChange("proximos")}
@@ -409,21 +422,7 @@ const pasados = eventos
       </span>
     </button>
   </div>
-
-  <div className="bg-[#001233]/60 p-1 rounded-xl border border-[#9eb7d4]/15">
-    <button
-      onClick={() => handleSubTabChange("calendario")}
-      className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-medium transition-all duration-200 h-full ${
-        subTab === "calendario"
-          ? "bg-[#7a0000]/80 text-white shadow"
-          : "text-[#9eb7d4] hover:text-white"
-      }`}
-    >
-      <Calendar className="w-3.5 h-3.5" />
-      Calendario
-    </button>
   </div>
-</div>
 
       {subTab !== "calendario" && eventosVisibles.length > 1 && (
         <div className="flex gap-2">
