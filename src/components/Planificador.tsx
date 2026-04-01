@@ -1,3 +1,5 @@
+import CalendarioTab from "@/components/CalendarioTab";
+import { Calendar } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { Evento, Miembro, Area, Habilidad, Asignacion } from "@/lib/types";
@@ -42,7 +44,7 @@ import {
   Copy,
 } from "lucide-react";
 
-type SubTab = "proximos" | "pasados";
+type SubTab = "proximos" | "pasados" | "calendario";
 type SortOrder = "asc" | "desc";
 
 function formatearFecha(fechaISO: string): string {
@@ -315,21 +317,33 @@ export default function Planificador() {
 
   const today = new Date().toISOString().split("T")[0];
 
-  const proximos = eventos
-    .filter((e) => e.fecha_texto >= today)
-    .sort((a, b) =>
-      sortOrder === "asc"
-        ? a.fecha_texto.localeCompare(b.fecha_texto)
-        : b.fecha_texto.localeCompare(a.fecha_texto)
-    );
+// ─────────────────────────────────────────────────────────────
+// sortKey: combina fecha + hora en un string comparable.
+// Normalizamos hora quitando " hs" si existe, para que tanto
+// "11:00 hs" como "11:00" produzcan el mismo resultado.
+// El formato final "YYYY-MM-DDTHH:MM" es comparable
+// lexicográficamente igual que cronológicamente.
+// ─────────────────────────────────────────────────────────────
+function sortKey(e: Evento): string {
+  const horaNorm = (e.hora ?? "00:00").replace(" hs", "").trim();
+  return `${e.fecha_texto}T${horaNorm}`;
+}
 
-  const pasados = eventos
-    .filter((e) => e.fecha_texto < today)
-    .sort((a, b) =>
-      sortOrder === "asc"
-        ? a.fecha_texto.localeCompare(b.fecha_texto)
-        : b.fecha_texto.localeCompare(a.fecha_texto)
-    );
+const proximos = eventos
+  .filter((e) => e.fecha_texto >= today)
+  .sort((a, b) =>
+    sortOrder === "asc"
+      ? sortKey(a).localeCompare(sortKey(b))
+      : sortKey(b).localeCompare(sortKey(a))
+  );
+
+const pasados = eventos
+  .filter((e) => e.fecha_texto < today)
+  .sort((a, b) =>
+    sortOrder === "asc"
+      ? sortKey(a).localeCompare(sortKey(b))
+      : sortKey(b).localeCompare(sortKey(a))
+  );
 
   const eventosVisibles = subTab === "proximos" ? proximos : pasados;
 
@@ -364,38 +378,54 @@ export default function Planificador() {
         </Button>
       </div>
 
-      <div className="flex gap-2 bg-[#001233]/60 p-1 rounded-xl border border-[#9eb7d4]/15">
-        <button
-          onClick={() => handleSubTabChange("proximos")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-            subTab === "proximos"
-              ? "bg-[#7a0000]/80 text-white shadow"
-              : "text-[#9eb7d4] hover:text-white"
-          }`}
-        >
-          <CalendarClock className="w-4 h-4" />
-          Próximos
-          <span className={`text-xs px-1.5 py-0.5 rounded-full ${subTab === "proximos" ? "bg-white/20" : "bg-[#9eb7d4]/20"}`}>
-            {proximos.length}
-          </span>
-        </button>
-        <button
-          onClick={() => handleSubTabChange("pasados")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-            subTab === "pasados"
-              ? "bg-[#7a0000]/80 text-white shadow"
-              : "text-[#9eb7d4] hover:text-white"
-          }`}
-        >
-          <History className="w-4 h-4" />
-          Pasados
-          <span className={`text-xs px-1.5 py-0.5 rounded-full ${subTab === "pasados" ? "bg-white/20" : "bg-[#9eb7d4]/20"}`}>
-            {pasados.length}
-          </span>
-        </button>
-      </div>
+<div className="flex gap-2">
+  <div className="flex flex-1 bg-[#001233]/60 p-1 rounded-xl border border-[#9eb7d4]/15">
+    <button
+      onClick={() => handleSubTabChange("proximos")}
+      className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-medium transition-all duration-200 ${
+        subTab === "proximos"
+          ? "bg-[#7a0000]/80 text-white shadow"
+          : "text-[#9eb7d4] hover:text-white"
+      }`}
+    >
+      <CalendarClock className="w-3.5 h-3.5" />
+      Eventos próximos
+      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${subTab === "proximos" ? "bg-white/20" : "bg-[#9eb7d4]/20"}`}>
+        {proximos.length}
+      </span>
+    </button>
+    <button
+      onClick={() => handleSubTabChange("pasados")}
+      className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-medium transition-all duration-200 ${
+        subTab === "pasados"
+          ? "bg-[#7a0000]/80 text-white shadow"
+          : "text-[#9eb7d4] hover:text-white"
+      }`}
+    >
+      <History className="w-3.5 h-3.5" />
+      Eventos pasados
+      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${subTab === "pasados" ? "bg-white/20" : "bg-[#9eb7d4]/20"}`}>
+        {pasados.length}
+      </span>
+    </button>
+  </div>
 
-      {eventosVisibles.length > 1 && (
+  <div className="bg-[#001233]/60 p-1 rounded-xl border border-[#9eb7d4]/15">
+    <button
+      onClick={() => handleSubTabChange("calendario")}
+      className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-medium transition-all duration-200 h-full ${
+        subTab === "calendario"
+          ? "bg-[#7a0000]/80 text-white shadow"
+          : "text-[#9eb7d4] hover:text-white"
+      }`}
+    >
+      <Calendar className="w-3.5 h-3.5" />
+      Calendario
+    </button>
+  </div>
+</div>
+
+      {subTab !== "calendario" && eventosVisibles.length > 1 && (
         <div className="flex gap-2">
           <button
             onClick={() => setSortOrder("asc")}
@@ -422,52 +452,62 @@ export default function Planificador() {
         </div>
       )}
 
-      {eventosVisibles.length === 0 ? (
-        <Card className="glass-card rounded-2xl p-6 border-[#9eb7d4]/20 text-center">
-          <p className="text-[#9eb7d4]">
-            {subTab === "proximos"
-              ? "No hay eventos futuros programados"
-              : "No hay eventos pasados registrados"}
-          </p>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {/* Cada card usa "evento" del .map(), no "selectedEvento" */}
-          {eventosVisibles.map((evento) => (
-            <Card
-              key={evento.id}
-              className="glass-card rounded-2xl p-4 border-[#9eb7d4]/10 hover:border-[#9eb7d4]/30 transition-all cursor-pointer"
-              onClick={() => openEditDialog(evento)}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-semibold text-white">
-                      {evento.nombre}
-                    </h3>
-                    <span className="text-[10px] bg-[#7a0000]/40 text-[#fcd5ce] px-2 py-0.5 rounded-full">
-                      {evento.tipo}
-                    </span>
+{subTab !== "calendario" && (
+        eventosVisibles.length === 0 ? (
+          <Card className="glass-card rounded-2xl p-6 border-[#9eb7d4]/20 text-center">
+            <p className="text-[#9eb7d4]">
+              {subTab === "proximos"
+                ? "No hay eventos futuros programados"
+                : "No hay eventos pasados registrados"}
+            </p>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {eventosVisibles.map((evento) => (
+              <Card
+                key={evento.id}
+                className="glass-card rounded-2xl p-4 border-[#9eb7d4]/10 hover:border-[#9eb7d4]/30 transition-all cursor-pointer"
+                onClick={() => openEditDialog(evento)}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-semibold text-white">
+                        {evento.nombre}
+                      </h3>
+                      <span className="text-[10px] bg-[#7a0000]/40 text-[#fcd5ce] px-2 py-0.5 rounded-full">
+                        {evento.tipo}
+                      </span>
+                    </div>
+                    <div className="flex gap-3 mt-1 text-xs text-[#9eb7d4]">
+                      <span className="flex items-center gap-1">
+                        <CalendarDays className="w-3 h-3" />
+                        {formatearFecha(evento.fecha_texto)}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {evento.hora}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex gap-3 mt-1 text-xs text-[#9eb7d4]">
-                    <span className="flex items-center gap-1">
-                      <CalendarDays className="w-3 h-3" />
-                      {formatearFecha(evento.fecha_texto)}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {evento.hora}
-                    </span>
+                  <div className="flex items-center gap-3">
+                    <Edit3 className="w-4 h-4 text-[#9eb7d4]" />
+                    <ChevronRight className="w-4 h-4 text-[#9eb7d4]" />
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Edit3 className="w-4 h-4 text-[#9eb7d4]" />
-                  <ChevronRight className="w-4 h-4 text-[#9eb7d4]" />
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
+              </Card>
+            ))}
+          </div>
+        )
+      )}
+
+      {subTab === "calendario" && (
+        <CalendarioTab
+          eventos={eventos}
+          asignaciones={asignaciones}
+          miembros={miembros}
+          areas={areas}
+        />
       )}
 
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
