@@ -239,20 +239,18 @@ export default function CalendarioTab({ eventos, asignaciones, miembros, areas }
                   key={evento.id}
                   className="glass-card rounded-2xl p-4 border-[#9eb7d4]/15"
                 >
-                  {/* Nombre y tipo del evento */}
+{/* Nombre, hora y tipo en una sola fila */}
                   <div className="flex items-center gap-2 mb-2">
                     <h4 className="text-sm font-semibold text-white flex-1">
                       {evento.nombre}
                     </h4>
+                    <span className="flex items-center gap-1 text-xs text-[#9eb7d4] shrink-0">
+                      <Clock className="w-3 h-3" />
+                      {normalizarHora(evento.hora)}
+                    </span>
                     <span className="text-[10px] bg-[#7a0000]/40 text-[#fcd5ce] px-2 py-0.5 rounded-full shrink-0">
                       {evento.tipo}
                     </span>
-                  </div>
-
-                  {/* Hora */}
-                  <div className="flex items-center gap-1 text-xs text-[#9eb7d4] mb-3">
-                    <Clock className="w-3 h-3" />
-                    {normalizarHora(evento.hora)}
                   </div>
 
                   {/* Equipo asignado */}
