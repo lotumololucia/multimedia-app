@@ -18,6 +18,7 @@ import {
   CalendarClock,
   BarChart3,
   Check,
+  Volume2,
 } from "lucide-react";
 
 type SubTab = "proximo" | "comparar";
@@ -29,6 +30,7 @@ const areaIcons: Record<string, React.ReactNode> = {
   Fotos: <Camera className="w-5 h-5" />,
   "Cámara fija": <Video className="w-5 h-5" />,
   "Cámara móvil": <VideoOff className="w-5 h-5" />,
+  Sonido: <Volume2 className="w-5 h-5" />,
 };
 
 const areaIconsLg: Record<string, React.ReactNode> = {
@@ -38,6 +40,7 @@ const areaIconsLg: Record<string, React.ReactNode> = {
   Fotos: <Camera className="w-6 h-6" />,
   "Cámara fija": <Video className="w-6 h-6" />,
   "Cámara móvil": <VideoOff className="w-6 h-6" />,
+  Sonido: <Volume2 className="w-6 h-6" />,
 };
 
 const areaOrder = [
@@ -47,6 +50,7 @@ const areaOrder = [
   "Fotos",
   "Cámara fija",
   "Cámara móvil",
+  "Sonido",
 ];
 
 function formatearFecha(fechaISO: string): string {
@@ -232,7 +236,6 @@ export default function Dashboard() {
     <h1 className="text-xl font-bold text-white tracking-widest">
       MULTIMEDIA
     </h1>
-    <p className="text-[#9eb7d4] text-xs">by: Lu</p>
   </div>
   <img
     src="/MULTIMEDIA.png"
@@ -310,7 +313,9 @@ export default function Dashboard() {
               return (
 <Card
   key={areaName}
-  className="rounded-2xl p-4 border border-[#9eb7d4]/25 hover:border-[#9eb7d4]/50 transition-all"
+  className={`rounded-2xl p-4 border border-[#9eb7d4]/25 hover:border-[#9eb7d4]/50 transition-all ${
+    areaName === "Sonido" ? "col-span-2" : ""
+  }`}
   style={{ backgroundColor: "rgba(0, 28, 71, 0.85)" }}
 >
                   <div className="flex items-center gap-2 mb-2">
@@ -323,11 +328,17 @@ export default function Dashboard() {
                   </div>
                   <div className="space-y-1">
                     {assigned.length > 0 ? (
-                      assigned.map((name, i) => (
-                      <p key={i} className="text-sm text-[#9eb7d4] font-medium">
-                        {name}
-                      </p>  
-                      ))
+                      areaName === "Sonido" ? (
+                        <p className="text-sm text-[#9eb7d4] font-medium">
+                          {assigned.join(" - ")}
+                        </p>
+                      ) : (
+                        assigned.map((name, i) => (
+                        <p key={i} className="text-sm text-[#9eb7d4] font-medium">
+                          {name}
+                        </p>  
+                        ))
+                      )
                     ) : (
                       <p className="text-xs text-[#9eb7d4]/50 italic">
                         Sin asignar

@@ -10,6 +10,7 @@ const areaOrder = [
   "Fotos",
   "Cámara fija",
   "Cámara móvil",
+  "Sonido",
 ];
 
 const DIAS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];

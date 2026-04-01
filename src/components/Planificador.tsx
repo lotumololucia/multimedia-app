@@ -42,6 +42,7 @@ import {
   CalendarClock,
   Check,
   Copy,
+  Volume2,
 } from "lucide-react";
 
 type SubTab = "proximos" | "pasados" | "calendario";
@@ -73,6 +74,7 @@ const areaIcons: Record<string, React.ReactNode> = {
   Fotos: <Camera className="w-4 h-4" />,
   "Cámara fija": <Video className="w-4 h-4" />,
   "Cámara móvil": <VideoOff className="w-4 h-4" />,
+  Sonido: <Volume2 className="w-4 h-4" />,
 };
 
 const areaOrder = [
@@ -82,6 +84,7 @@ const areaOrder = [
   "Fotos",
   "Cámara fija",
   "Cámara móvil",
+  "Sonido",
 ];
 
 export default function Planificador() {

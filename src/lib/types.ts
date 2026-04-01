@@ -35,4 +35,5 @@ export interface Miembro {
     "Fotos",
     "Cámara fija",
     "Cámara móvil",
+    "Sonido",
   ] as const;

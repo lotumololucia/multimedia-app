@@ -22,6 +22,7 @@ import {
   VideoOff,
   Edit3,
   Check,
+  Volume2,
 } from "lucide-react";
 
 const areaIcons: Record<string, React.ReactNode> = {
@@ -31,6 +32,7 @@ const areaIcons: Record<string, React.ReactNode> = {
   Fotos: <Camera className="w-3 h-3" />,
   "Cámara fija": <Video className="w-3 h-3" />,
   "Cámara móvil": <VideoOff className="w-3 h-3" />,
+  Sonido: <Volume2 className="w-3 h-3" />,
 };
 
 const monthNames: Record<string, string> = {

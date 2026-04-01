@@ -26,6 +26,7 @@ import {
   CalendarDays,
   Plus,
   Check,
+  Volume2,
 } from "lucide-react";
 
 const areaIconsMap: Record<string, React.ReactNode> = {
@@ -35,6 +36,7 @@ const areaIconsMap: Record<string, React.ReactNode> = {
   Fotos: <Camera className="w-4 h-4" />,
   "Cámara fija": <Video className="w-4 h-4" />,
   "Cámara móvil": <VideoOff className="w-4 h-4" />,
+  Sonido: <Volume2 className="w-4 h-4" />,
 };
 
 function formatearFecha(fechaISO: string): string {
