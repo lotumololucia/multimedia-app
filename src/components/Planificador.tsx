@@ -87,7 +87,7 @@ const areaOrder = [
   "Sonido",
 ];
 
-export default function Planificador() {
+export default function Planificador({ isAdmin = false }: { isAdmin?: boolean }) {
   const { toast } = useToast();
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
@@ -372,13 +372,15 @@ const pasados = eventos
     <div className="p-4 max-w-2xl mx-auto space-y-6">
       <div className="flex items-center justify-between pt-4">
         <h1 className="text-xl font-bold text-white">Planificador</h1>
-        <Button
-          onClick={() => setShowCreateDialog(true)}
-          className="bg-[#7a0000] hover:bg-[#9a1a1a] text-white rounded-xl h-10 px-4 text-sm"
-        >
-          <Plus className="w-4 h-4 mr-1" />
-          Nuevo Evento
-        </Button>
+        {isAdmin && (
+          <Button
+            onClick={() => setShowCreateDialog(true)}
+            className="bg-[#7a0000] hover:bg-[#9a1a1a] text-white rounded-xl h-10 px-4 text-sm"
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Nuevo Evento
+          </Button>
+        )}
       </div>
 
 <div className="flex gap-2">
@@ -493,7 +495,7 @@ const pasados = eventos
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Edit3 className="w-4 h-4 text-[#9eb7d4]" />
+                    {isAdmin && <Edit3 className="w-4 h-4 text-[#9eb7d4]" />}
                     <ChevronRight className="w-4 h-4 text-[#9eb7d4]" />
                   </div>
                 </div>
@@ -590,18 +592,20 @@ const pasados = eventos
                 Asignaciones
               </p>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                selectedEvento && openEditDetails(selectedEvento);
-              }}
-              className="text-[#9eb7d4] hover:text-white hover:bg-[#9eb7d4]/10 h-8 px-2"
-            >
-              <Edit3 className="w-4 h-4 mr-2" />
-              Editar Datos
-            </Button>
+            {isAdmin && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  selectedEvento && openEditDetails(selectedEvento);
+                }}
+                className="text-[#9eb7d4] hover:text-white hover:bg-[#9eb7d4]/10 h-8 px-2"
+              >
+                <Edit3 className="w-4 h-4 mr-2" />
+                Editar Datos
+              </Button>
+            )}
           </DialogHeader>
           {selectedEvento && (
             <div className="space-y-4">
@@ -655,12 +659,12 @@ const pasados = eventos
                             <button
                               key={m.id}
                               type="button"
-                              onClick={() => toggleMember(area.id, m.id)}
+                              onClick={() => isAdmin && toggleMember(area.id, m.id)}
                               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
                                 isSelected
                                   ? "bg-[#7a0000]/70 border-[#7a0000] text-white"
                                   : "bg-[#9eb7d4]/5 border-[#9eb7d4]/20 text-[#9eb7d4] hover:border-[#9eb7d4]/50 hover:text-white"
-                              }`}
+                              } ${!isAdmin && "opacity-80 pointer-events-none"}`}
                             >
                               {isSelected && <Check className="w-3 h-3" />}
                               {m.nombre}
@@ -673,13 +677,15 @@ const pasados = eventos
                 );
               })}
 
-              <Button
-                onClick={handleSaveAssignments}
-                className="w-full bg-[#7a0000] hover:bg-[#9a1a1a] text-white rounded-xl"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                Guardar Asignaciones
-              </Button>
+              {isAdmin && (
+                <Button
+                  onClick={handleSaveAssignments}
+                  className="w-full bg-[#7a0000] hover:bg-[#9a1a1a] text-white rounded-xl"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  Guardar Asignaciones
+                </Button>
+              )}
             </div>
           )}
         </DialogContent>

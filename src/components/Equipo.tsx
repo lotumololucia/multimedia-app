@@ -52,7 +52,7 @@ function formatearFecha(fechaISO: string): string {
   return fechaISO.charAt(0).toUpperCase() + fechaISO.slice(1);
 }
 
-export default function Equipo() {
+export default function Equipo({ isAdmin = false }: { isAdmin?: boolean }) {
   const { toast } = useToast();
   const [miembros, setMiembros] = useState<Miembro[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
@@ -245,13 +245,15 @@ export default function Equipo() {
           <h1 className="text-xl font-bold text-white">Equipo</h1>
           <p className="text-sm text-[#9eb7d4] mt-0.5">{miembros.length} miembros</p>
         </div>
-        <Button
-          onClick={() => setShowCreateDialog(true)}
-          className="bg-[#7a0000] hover:bg-[#9a1a1a] text-white rounded-xl h-10 px-4 text-sm"
-        >
-          <Plus className="w-4 h-4 mr-1" />
-          Nuevo Miembro
-        </Button>
+        {isAdmin && (
+          <Button
+            onClick={() => setShowCreateDialog(true)}
+            className="bg-[#7a0000] hover:bg-[#9a1a1a] text-white rounded-xl h-10 px-4 text-sm"
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Nuevo Miembro
+          </Button>
+        )}
       </div>
 
       <div className="relative">
@@ -479,6 +481,7 @@ export default function Equipo() {
   asignaciones={asignaciones}
   eventos={eventos}
   onMemberUpdated={fetchData}
+  isAdmin={isAdmin}
 />
     </div>
   );

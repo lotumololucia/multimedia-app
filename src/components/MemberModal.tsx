@@ -70,6 +70,7 @@ interface MemberModalProps {
   asignaciones: Asignacion[];
   eventos: { id: number; fecha_texto: string; nombre: string }[];
   onMemberUpdated: () => void;
+  isAdmin?: boolean;
 }
 
 export default function MemberModal({
@@ -81,6 +82,7 @@ export default function MemberModal({
   asignaciones,
   eventos,
   onMemberUpdated,
+  isAdmin = false,
 }: MemberModalProps) {
   const { toast } = useToast();
 
@@ -266,15 +268,17 @@ export default function MemberModal({
                     </p>
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={openEditDialog}
-                  className="text-[#9eb7d4] hover:text-white hover:bg-[#9eb7d4]/10 h-8 px-2"
-                >
-                  <Edit3 className="w-4 h-4 mr-1" />
-                  Editar
-                </Button>
+                {isAdmin && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={openEditDialog}
+                    className="text-[#9eb7d4] hover:text-white hover:bg-[#9eb7d4]/10 h-8 px-2"
+                  >
+                    <Edit3 className="w-4 h-4 mr-1" />
+                    Editar
+                  </Button>
+                )}
               </div>
             </DialogTitle>
           </DialogHeader>
