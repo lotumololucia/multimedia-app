@@ -113,10 +113,23 @@ export default function Dashboard() {
       const asignacionesData = asignacionesRes.data || [];
 
       // Próximo evento: el más cercano futuro (o el primero si no hay futuros)
-      const today = new Date().toISOString().split("T")[0];
+      const now = new Date();
+      const boundaryTime = new Date(now.getTime() - 60 * 60 * 1000); // 1 hora atrás
+      const offset = boundaryTime.getTimezoneOffset();
+      const localBoundary = new Date(boundaryTime.getTime() - offset * 60 * 1000);
+      const boundaryStr = localBoundary.toISOString().slice(0, 16); // "YYYY-MM-DDTHH:mm"
+
+      const getSortKey = (e: Evento) => {
+        const horaNorm = (e.hora ?? "00:00").replace(" hs", "").trim();
+        const parts = horaNorm.split(":");
+        const hh = parts[0]?.padStart(2, "0") || "00";
+        const mm = parts[1]?.padStart(2, "0") || "00";
+        return `${e.fecha_texto}T${hh}:${mm}`;
+      };
+
       const futureEvents = [...eventosData]
-        .filter((e) => e.fecha_texto >= today)
-        .sort((a, b) => a.fecha_texto.localeCompare(b.fecha_texto));
+        .filter((e) => getSortKey(e) >= boundaryStr)
+        .sort((a, b) => getSortKey(a).localeCompare(getSortKey(b)));
       const upcoming =
         futureEvents.length > 0
           ? futureEvents[0]

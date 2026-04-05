@@ -318,7 +318,11 @@ export default function Planificador({ isAdmin = false }: { isAdmin?: boolean })
     });
   }
 
-  const today = new Date().toISOString().split("T")[0];
+  const now = new Date();
+  const boundaryTime = new Date(now.getTime() - 60 * 60 * 1000);
+  const offset = boundaryTime.getTimezoneOffset();
+  const localBoundary = new Date(boundaryTime.getTime() - offset * 60 * 1000);
+  const boundaryStr = localBoundary.toISOString().slice(0, 16);
 
 // ─────────────────────────────────────────────────────────────
 // sortKey: combina fecha + hora en un string comparable.
@@ -329,11 +333,14 @@ export default function Planificador({ isAdmin = false }: { isAdmin?: boolean })
 // ─────────────────────────────────────────────────────────────
 function sortKey(e: Evento): string {
   const horaNorm = (e.hora ?? "00:00").replace(" hs", "").trim();
-  return `${e.fecha_texto}T${horaNorm}`;
+  const parts = horaNorm.split(":");
+  const hh = parts[0]?.padStart(2, "0") || "00";
+  const mm = parts[1]?.padStart(2, "0") || "00";
+  return `${e.fecha_texto}T${hh}:${mm}`;
 }
 
 const proximos = eventos
-  .filter((e) => e.fecha_texto >= today)
+  .filter((e) => sortKey(e) >= boundaryStr)
   .sort((a, b) =>
     sortOrder === "asc"
       ? sortKey(a).localeCompare(sortKey(b))
@@ -341,7 +348,7 @@ const proximos = eventos
   );
 
 const pasados = eventos
-  .filter((e) => e.fecha_texto < today)
+  .filter((e) => sortKey(e) < boundaryStr)
   .sort((a, b) =>
     sortOrder === "asc"
       ? sortKey(a).localeCompare(sortKey(b))
