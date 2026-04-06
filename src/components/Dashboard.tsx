@@ -134,8 +134,8 @@ export default function Dashboard() {
         futureEvents.length > 0
           ? futureEvents[0]
           : eventosData.length > 0
-          ? eventosData[0]
-          : null;
+            ? eventosData[0]
+            : null;
 
       setNextEvent(upcoming);
       setAreas(areasData);
@@ -244,39 +244,32 @@ export default function Dashboard() {
   return (
     <div className="p-4 max-w-2xl mx-auto space-y-6">
       {/* Título */}
-<div className="flex items-center justify-center gap-4 pt-4">
-  <div className="text-center">
-    <h1 className="text-xl font-bold text-white tracking-widest">
-      MULTIMEDIA
-    </h1>
-  </div>
-  <img
-    src="/MULTIMEDIA.png"
-    alt="Logo Somos Familia"
-    className="w-24 h-24 object-contain"
-  />
-</div>
+      <div className="flex items-center justify-center pt-2 -mb-2">
+        <img
+          src="/MULTIMEDIA.png"
+          alt="Logo Multimedia"
+          className="w-40 h-40 object-contain"
+        />
+      </div>
 
       {/* Sub-tabs */}
       <div className="flex gap-2 bg-[#001233]/60 p-1 rounded-xl border border-[#9eb7d4]/15">
         <button
           onClick={() => setSubTab("proximo")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-            subTab === "proximo"
+          className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${subTab === "proximo"
               ? "bg-[#7a0000]/80 text-white shadow"
               : "text-[#9eb7d4] hover:text-white"
-          }`}
+            }`}
         >
           <CalendarClock className="w-4 h-4" />
           Próximo Evento
         </button>
         <button
           onClick={() => setSubTab("comparar")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-            subTab === "comparar"
+          className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${subTab === "comparar"
               ? "bg-[#7a0000]/80 text-white shadow"
               : "text-[#9eb7d4] hover:text-white"
-          }`}
+            }`}
         >
           <BarChart3 className="w-4 h-4" />
           Comparar Eventos
@@ -324,13 +317,12 @@ export default function Dashboard() {
             {areaOrder.map((areaName) => {
               const assigned = getAssignedMembers(areaName);
               return (
-<Card
-  key={areaName}
-  className={`rounded-2xl p-4 border border-[#9eb7d4]/25 hover:border-[#9eb7d4]/50 transition-all ${
-    areaName === "Sonido" ? "col-span-2" : ""
-  }`}
-  style={{ backgroundColor: "rgba(0, 28, 71, 0.85)" }}
->
+                <Card
+                  key={areaName}
+                  className={`rounded-2xl p-4 border border-[#9eb7d4]/25 hover:border-[#9eb7d4]/50 transition-all ${areaName === "Sonido" ? "col-span-2" : ""
+                    }`}
+                  style={{ backgroundColor: "rgba(0, 28, 71, 0.85)" }}
+                >
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-8 h-8 rounded-lg bg-[#7a0000]/60 flex items-center justify-center text-[#fcd5ce]">
                       {areaIconsLg[areaName]}
@@ -347,9 +339,9 @@ export default function Dashboard() {
                         </p>
                       ) : (
                         assigned.map((name, i) => (
-                        <p key={i} className="text-sm text-[#9eb7d4] font-medium">
-                          {name}
-                        </p>  
+                          <p key={i} className="text-sm text-[#9eb7d4] font-medium">
+                            {name}
+                          </p>
                         ))
                       )
                     ) : (
@@ -400,13 +392,12 @@ export default function Dashboard() {
                       key={evento.id}
                       onClick={() => toggleEventSelection(evento.id)}
                       disabled={isDisabled}
-                      className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all border ${
-                        isSelected
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all border ${isSelected
                           ? "bg-[#7a0000]/70 border-[#7a0000] text-white"
                           : isDisabled
-                          ? "bg-[#9eb7d4]/5 border-[#9eb7d4]/10 text-[#9eb7d4]/30 cursor-not-allowed"
-                          : "bg-[#9eb7d4]/5 border-[#9eb7d4]/20 text-[#9eb7d4] hover:border-[#9eb7d4]/50 hover:text-white"
-                      }`}
+                            ? "bg-[#9eb7d4]/5 border-[#9eb7d4]/10 text-[#9eb7d4]/30 cursor-not-allowed"
+                            : "bg-[#9eb7d4]/5 border-[#9eb7d4]/20 text-[#9eb7d4] hover:border-[#9eb7d4]/50 hover:text-white"
+                        }`}
                     >
                       <div className="flex items-center gap-2.5 text-left">
                         {isSelected ? (
@@ -416,11 +407,10 @@ export default function Dashboard() {
                         )}
                         <span>{formatearFecha(evento.fecha_texto)}</span>
                         <span
-                          className={`text-[10px] px-2 py-0.5 rounded-full ${
-                            isSelected
+                          className={`text-[10px] px-2 py-0.5 rounded-full ${isSelected
                               ? "bg-white/20 text-white"
                               : "bg-[#7a0000]/40 text-[#fcd5ce]"
-                          }`}
+                            }`}
                         >
                           {evento.tipo}
                         </span>
@@ -479,9 +469,8 @@ export default function Dashboard() {
                   {areaOrder.map((areaName, index) => (
                     <tr
                       key={areaName}
-                      className={`border-b border-[#9eb7d4]/10 transition-colors hover:bg-[#9eb7d4]/5 ${
-                        index % 2 === 0 ? "bg-transparent" : "bg-[#9eb7d4]/[0.03]"
-                      } ${index === areaOrder.length - 1 ? "border-b-0" : ""}`}
+                      className={`border-b border-[#9eb7d4]/10 transition-colors hover:bg-[#9eb7d4]/5 ${index % 2 === 0 ? "bg-transparent" : "bg-[#9eb7d4]/[0.03]"
+                        } ${index === areaOrder.length - 1 ? "border-b-0" : ""}`}
                     >
                       {/* Celda de área */}
                       <td className="px-4 py-3">
@@ -498,11 +487,10 @@ export default function Dashboard() {
                         return (
                           <td
                             key={evento.id}
-                            className={`px-4 py-3 text-xs ${
-                              cell === "–"
+                            className={`px-4 py-3 text-xs ${cell === "–"
                                 ? "text-[#9eb7d4]/25"
                                 : "text-[#9eb7d4]"
-                            }`}
+                              }`}
                           >
                             {cell}
                           </td>
