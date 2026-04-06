@@ -518,6 +518,8 @@ const pasados = eventos
           asignaciones={asignaciones}
           miembros={miembros}
           areas={areas}
+          isAdmin={isAdmin}
+          onEdit={openEditDialog}
         />
       )}
 

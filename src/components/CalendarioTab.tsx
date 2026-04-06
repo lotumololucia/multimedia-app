@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Evento, Miembro, Area, Asignacion } from "@/lib/types";
 import { Card } from "@/components/ui/card";
-import { ChevronLeft, ChevronRight, Clock, User, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, User, X, Edit3 } from "lucide-react";
 
 const areaOrder = [
   "Luces",
@@ -33,9 +33,11 @@ interface Props {
   asignaciones: Asignacion[];
   miembros: Miembro[];
   areas: Area[];
+  isAdmin?: boolean;
+  onEdit?: (evento: Evento) => void;
 }
 
-export default function CalendarioTab({ eventos, asignaciones, miembros, areas }: Props) {
+export default function CalendarioTab({ eventos, asignaciones, miembros, areas, isAdmin, onEdit }: Props) {
   const hoy = new Date();
 
   // ── Estado: mes y año visible en el calendario ──────────────
@@ -252,6 +254,15 @@ export default function CalendarioTab({ eventos, asignaciones, miembros, areas }
                     <span className="text-[10px] bg-[#7a0000]/40 text-[#fcd5ce] px-2 py-0.5 rounded-full shrink-0">
                       {evento.tipo}
                     </span>
+                    {isAdmin && onEdit && (
+                      <button
+                        onClick={() => onEdit(evento)}
+                        className="p-1 text-[#9eb7d4] hover:text-white transition-colors rounded-md hover:bg-[#9eb7d4]/10 shrink-0"
+                        title="Editar evento"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
 
                   {/* Equipo asignado */}
