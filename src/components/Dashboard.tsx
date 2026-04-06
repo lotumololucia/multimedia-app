@@ -244,7 +244,7 @@ export default function Dashboard() {
   return (
     <div className="p-4 max-w-2xl mx-auto space-y-6">
       {/* Título */}
-      <div className="flex items-center justify-center pt-2 -mb-5">
+      <div className="flex items-center justify-center -mt-8 -mb-8">
         <img
           src="/MULTIMEDIA.png"
           alt="Logo Multimedia"
